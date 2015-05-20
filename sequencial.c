@@ -219,12 +219,10 @@ int main(int argc, char *argv[]){
 	// 	}
 	// }
 
-	
-
-	//free(bestTour.cities);
-	free(t.cities);
+	free(bestTour.cities);
+	if (bestTour.cities != t.cities) free(t.cities);
 	free(cidades);
-	//StackDestroy(&stack);
+	StackDestroy(&stack);
 
 	return 0;
 }
