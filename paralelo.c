@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <omp.h>
 #include "timer.h"
 
 struct rota{
@@ -122,6 +123,19 @@ void printTour(struct tour t)
 	printf("Custo = %d\n", t.cost);
 }
 
+int getCost(struct city cidade, int destinoID, int num_cidades)
+{
+	int i;
+	for (i = 0; i < num_cidades; i++)
+	{
+		if (cidade.ligacoes[i].origemID == cidade.id && cidade.ligacoes[i].destinoID == destinoID)
+		{
+			return cidade.ligacoes[i].custo;
+		}
+	}
+	return 0;
+}
+
 void addCity(struct tour *t, struct city cidade, int num_cidades)
 {
 	//printf("addCity\n");
@@ -161,6 +175,52 @@ void copyTour(struct tour *k, struct tour t, int num_cidades){
 	memcpy(k->cities, t.cities, (num_cidades+1)*sizeof(struct city));
 }
 
+void initTour(struct tour *t, struct city cidadeInicial, int num_cidades)
+{
+	t->cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
+	t->cost = 0;
+	t->num_cities = 1;
+	t->cities[0] = cidadeInicial;
+}
+
+void calculateMinimumCost(struct tour tourInicial, struct tour *bestTour, int num_cidades, int cidadeInicial, struct city *cidades)
+{
+	int i;
+	struct tour t;
+	stackT stack;
+	StackInit(&stack);
+
+	StackPush(&stack, tourInicial);
+	while(!StackIsEmpty(&stack)){
+		t = StackPop(&stack);
+		if (t.num_cities == num_cidades + 1)
+		{
+		# 	pragma omp critical
+			if (t.cost < bestTour->cost)
+			{
+				*bestTour = t;
+			}
+		}
+		else{
+
+			for (i = num_cidades - 1; i >= 0; i--)
+			{
+				struct tour k;
+				if (checkTour(t, i, cidadeInicial, num_cidades))
+				{
+					copyTour(&k, t, num_cidades);
+					addCity(&k, cidades[i], num_cidades);
+					StackPush(&stack, k);
+					removeCity(&k, cidades[i], num_cidades);
+				}
+			}
+		}
+	}
+	StackDestroy(&stack);
+	if (bestTour->cities != t.cities) free(t.cities);
+
+}
+
 void printVector(struct city *cities, int num_cidades){
 	int i;
 	for (i = 0; i < num_cidades; i++)
@@ -178,7 +238,7 @@ void printStack(stackT stack){
 }
 
 int main(int argc, char *argv[]){
-	int i, j;
+	int i, j, thread_count;
 	int num_cidades;
 	int cidadeInicial;
 	struct city *cidades;
@@ -187,14 +247,18 @@ int main(int argc, char *argv[]){
 	stackT stack; 
 	stackT stackTemp;
 	double start, finish;
+	struct tour *tourIniciais;
 
-	StackInit(&stack);
+
 	bestTour.cost = 99999;
+
+	thread_count = strtol(argv[1], NULL, 10);
 
 	scanf("%d", &num_cidades);
 	scanf("%d", &cidadeInicial);
 
 	cidades = (struct city*) malloc(num_cidades*(sizeof(struct city)));
+	tourIniciais = (struct tour*) malloc((num_cidades-1)*(sizeof(struct tour)));
 
 
 	for (i = 0; i < num_cidades; i++)
@@ -219,38 +283,26 @@ int main(int argc, char *argv[]){
 	// 	}
 	// }
 
-	t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
-	t.cost = 0;
-	t.num_cities = 1;
-	t.cities[0] = cidades[cidadeInicial];
-
+	initTour(&t, cidades[cidadeInicial], num_cidades);
 
 	GET_TIME(start);
-	StackPush(&stack, t);
-	while(!StackIsEmpty(&stack)){
-		t = StackPop(&stack);
-		if (t.num_cities == num_cidades + 1)
+	j = 0;
+	for (i = 0; i < num_cidades; i++)
+	{
+		if (i != cidadeInicial)
 		{
-			if (t.cost < bestTour.cost)
-			{
-				bestTour = t;
-			}
-		}
-		else{
-
-			for (i = num_cidades - 1; i >= 0; i--)
-			{
-				struct tour k;
-				if (checkTour(t, i, cidadeInicial, num_cidades))
-				{
-					copyTour(&k, t, num_cidades);
-					addCity(&k, cidades[i], num_cidades);
-					StackPush(&stack, k);
-					removeCity(&k, cidades[i], num_cidades);
-				}
-			}
+			initTour(&tourIniciais[j], cidades[cidadeInicial], num_cidades);
+			addCity(&tourIniciais[j], cidades[i], num_cidades);
+			j++;
 		}
 	}
+#	pragma omp parallel for num_threads(thread_count)
+	for (i = 0; i < num_cidades-1; i++)
+	{
+		calculateMinimumCost(tourIniciais[i], &bestTour, num_cidades, cidadeInicial, cidades);
+	}	
+
+	
 	GET_TIME(finish);
 
 	printf("finish\n");
@@ -258,9 +310,8 @@ int main(int argc, char *argv[]){
 	printf("tempo=%f\n", finish-start);
 
 	free(bestTour.cities);
-	if (bestTour.cities != t.cities) free(t.cities);
+	//if (bestTour.cities != t.cities) free(t.cities);
 	free(cidades);
-	StackDestroy(&stack);
 
 	return 0;
 }
