@@ -201,14 +201,14 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	for (i = 0; i < num_cidades; i++)
-	{
-		printf("Cidade %d\n", cidades[i].id);
-		for (j = 0; j < num_cidades; j++)
-		{
-			printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
-		}
-	}
+	// for (i = 0; i < num_cidades; i++)
+	// {
+	// 	printf("Cidade %d\n", cidades[i].id);
+	// 	for (j = 0; j < num_cidades; j++)
+	// 	{
+	// 		printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
+	// 	}
+	// }
 
 	//t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
 	t.cost = 0;
