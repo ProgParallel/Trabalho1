@@ -14,7 +14,7 @@ struct city{
 
 struct tour
 {
-	struct city *cities;
+	struct city cities[20];
 	int cost;
 	int num_cities;
 };
@@ -60,15 +60,18 @@ void StackPush(stackT *stackP, stackElementT element)
   stackP->size++;
   if (StackIsEmpty(stackP))
   {
+  	printf("empty\n");
     stackP->contents = (stackElementT *) malloc(sizeof(stackElementT) * stackP->size);
   }
   if (StackIsFull(stackP)) {
+  	printf("Full\n");
     stackP->contents = (stackElementT *) realloc(stackP->contents, sizeof(stackElementT) * stackP->size);
   }
 
   /* Put information in array; update top. */
-
+  printf("push antes\n");
   stackP->contents[++stackP->top] = element;
+  printf("push depois\n");
 }
 
 stackElementT StackPop(stackT *stackP)
@@ -109,8 +112,21 @@ int checkTour(struct tour t, int cidade, int cidadeInicial, int num_cidades)
 	}
 }
 
+void printTour(struct tour t)
+{
+	int i;
+	printf("Rota ");
+	for (i = 0; i < t.num_cities; i++)
+	{
+		printf("%d ", t.cities[i].id);
+	}
+	printf("\n");
+	printf("Custo = %d\n", t.cost);
+}
+
 void addCity(struct tour *t, struct city cidade, int num_cidades)
 {
+	printf("addCity\n");
 	int i;
 	struct city cidadeOrigem = t->cities[t->num_cities - 1];
 	for (i = 0; i < num_cidades; i++)
@@ -125,6 +141,9 @@ void addCity(struct tour *t, struct city cidade, int num_cidades)
 
 void removeCity(struct tour *t, struct city cidade, int num_cidades)
 {
+	printf("removeCity\n");
+	//printTour(*t);
+	//printf("%d ", t->num_cities);
 	t->num_cities--;
 	int i;
 	struct city cidadeOrigem = t->cities[t->num_cities - 1];
@@ -137,16 +156,20 @@ void removeCity(struct tour *t, struct city cidade, int num_cidades)
 	}
 }
 
-void printTour(struct tour t)
-{
+void printVector(struct city *cities, int num_cidades){
 	int i;
-	printf("Rota ");
-	for (i = 0; i < t.num_cities; i++)
+	for (i = 0; i < num_cidades; i++)
 	{
-		printf("%d ", t.cities[i].id);
+		printf("%d ", cities[i].id);
 	}
 	printf("\n");
-	printf("Custo = %d\n", t.cost);
+}
+
+void printStack(stackT stack){
+	while(!StackIsEmpty(&stack)){
+		struct tour t = StackPop(&stack);
+		printVector(t.cities, t.num_cities);
+	}
 }
 
 int main(int argc, char *argv[]){
@@ -157,9 +180,10 @@ int main(int argc, char *argv[]){
 	struct tour t;
 	struct tour bestTour;
 	stackT stack; 
+	stackT stackTemp;
 
 	StackInit(&stack);
-	bestTour.cost = 99;
+	bestTour.cost = 99999;
 
 	scanf("%d", &num_cidades);
 	scanf("%d", &cidadeInicial);
@@ -180,7 +204,16 @@ int main(int argc, char *argv[]){
 		}
 	}
 
-	t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
+	for (i = 0; i < num_cidades; i++)
+	{
+		printf("Cidade %d\n", cidades[i].id);
+		for (j = 0; j < num_cidades; j++)
+		{
+			printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
+		}
+	}
+
+	//t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
 	t.cost = 0;
 	t.num_cities = 1;
 	t.cities[0] = cidades[0];
@@ -196,12 +229,15 @@ int main(int argc, char *argv[]){
 			}
 		}
 		else{
+
 			for (i = num_cidades - 1; i >= 0; i--)
 			{
 				if (checkTour(t, i, cidadeInicial, num_cidades))
 				{
 					addCity(&t, cidades[i], num_cidades);
+					printf("push stack antes\n");
 					StackPush(&stack, t);
+					printf("push stack depois\n");
 					removeCity(&t, cidades[i], num_cidades);
 				}
 			}
@@ -210,17 +246,8 @@ int main(int argc, char *argv[]){
 
 	printTour(bestTour);
 
-	// for (i = 0; i < num_cidades; i++)
-	// {
-	// 	printf("Cidade %d\n", cidades[i].id);
-	// 	for (j = 0; j < num_cidades; j++)
-	// 	{
-	// 		printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
-	// 	}
-	// }
-
-	free(bestTour.cities);
-	if (bestTour.cities != t.cities) free(t.cities);
+	//free(bestTour.cities);
+	//if (bestTour.cities != t.cities) free(t.cities);
 	free(cidades);
 	StackDestroy(&stack);
 
