@@ -29,9 +29,10 @@ typedef struct {
 
 void StackInit(stackT *stackP)
 {
+  stackP->contents = (stackElementT *) malloc(sizeof(stackElementT) * 1);
   /* Allocate a new array to hold the contents. */
 
-  stackP->size = 0;
+  stackP->size = 1;
   stackP->top = -1;  /* I.e., empty */
 }
 
@@ -57,21 +58,17 @@ int StackIsFull(stackT *stackP)
 
 void StackPush(stackT *stackP, stackElementT element)
 {
-  stackP->size++;
-  if (StackIsEmpty(stackP))
-  {
-  	printf("empty\n");
-    stackP->contents = (stackElementT *) malloc(sizeof(stackElementT) * stackP->size);
-  }
   if (StackIsFull(stackP)) {
-  	printf("Full\n");
+  	//printf("Full\n");
+  	stackP->size++;
     stackP->contents = (stackElementT *) realloc(stackP->contents, sizeof(stackElementT) * stackP->size);
   }
 
+
   /* Put information in array; update top. */
-  printf("push antes\n");
+  //printf("push antes\n");
   stackP->contents[++stackP->top] = element;
-  printf("push depois\n");
+  //printf("push depois\n");
 }
 
 stackElementT StackPop(stackT *stackP)
@@ -126,7 +123,7 @@ void printTour(struct tour t)
 
 void addCity(struct tour *t, struct city cidade, int num_cidades)
 {
-	printf("addCity\n");
+	//printf("addCity\n");
 	int i;
 	struct city cidadeOrigem = t->cities[t->num_cities - 1];
 	for (i = 0; i < num_cidades; i++)
@@ -141,7 +138,7 @@ void addCity(struct tour *t, struct city cidade, int num_cidades)
 
 void removeCity(struct tour *t, struct city cidade, int num_cidades)
 {
-	printf("removeCity\n");
+	//printf("removeCity\n");
 	//printTour(*t);
 	//printf("%d ", t->num_cities);
 	t->num_cities--;
@@ -235,10 +232,12 @@ int main(int argc, char *argv[]){
 				if (checkTour(t, i, cidadeInicial, num_cidades))
 				{
 					addCity(&t, cidades[i], num_cidades);
-					printf("push stack antes\n");
+					//printTour(t);
+					//printf("push stack antes\n");
 					StackPush(&stack, t);
-					printf("push stack depois\n");
+					//printf("push stack depois\n");
 					removeCity(&t, cidades[i], num_cidades);
+					//printTour(t);
 				}
 			}
 		}
