@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include "timer.h"
 
 struct rota{
 		int origemID;
@@ -14,7 +15,7 @@ struct city{
 
 struct tour
 {
-	struct city cities[20];
+	struct city *cities;
 	int cost;
 	int num_cities;
 };
@@ -153,6 +154,13 @@ void removeCity(struct tour *t, struct city cidade, int num_cidades)
 	}
 }
 
+void copyTour(struct tour *k, struct tour t, int num_cidades){
+	k->cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
+	k->num_cities = t.num_cities;
+	k->cost = t.cost;
+	memcpy(k->cities, t.cities, (num_cidades+1)*sizeof(struct city));
+}
+
 void printVector(struct city *cities, int num_cidades){
 	int i;
 	for (i = 0; i < num_cidades; i++)
@@ -178,6 +186,7 @@ int main(int argc, char *argv[]){
 	struct tour bestTour;
 	stackT stack; 
 	stackT stackTemp;
+	double start, finish;
 
 	StackInit(&stack);
 	bestTour.cost = 99999;
@@ -210,11 +219,13 @@ int main(int argc, char *argv[]){
 	// 	}
 	// }
 
-	//t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
+	t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
 	t.cost = 0;
 	t.num_cities = 1;
 	t.cities[0] = cidades[0];
 
+
+	GET_TIME(start);
 	StackPush(&stack, t);
 	while(!StackIsEmpty(&stack)){
 		t = StackPop(&stack);
@@ -229,24 +240,25 @@ int main(int argc, char *argv[]){
 
 			for (i = num_cidades - 1; i >= 0; i--)
 			{
+				struct tour k;
 				if (checkTour(t, i, cidadeInicial, num_cidades))
 				{
-					addCity(&t, cidades[i], num_cidades);
-					//printTour(t);
-					//printf("push stack antes\n");
-					StackPush(&stack, t);
-					//printf("push stack depois\n");
-					removeCity(&t, cidades[i], num_cidades);
-					//printTour(t);
+					copyTour(&k, t, num_cidades);
+					addCity(&k, cidades[i], num_cidades);
+					StackPush(&stack, k);
+					removeCity(&k, cidades[i], num_cidades);
 				}
 			}
 		}
 	}
+	GET_TIME(finish);
 
+	printf("finish\n");
 	printTour(bestTour);
+	printf("tempo=%f\n", finish-start);
 
-	//free(bestTour.cities);
-	//if (bestTour.cities != t.cities) free(t.cities);
+	free(bestTour.cities);
+	if (bestTour.cities != t.cities) free(t.cities);
 	free(cidades);
 	StackDestroy(&stack);
 
