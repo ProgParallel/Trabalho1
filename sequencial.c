@@ -2,20 +2,9 @@
 #include <stdlib.h>
 #include "timer.h"
 
-struct rota{
-		int origemID;
-		int destinoID;
-		int custo;
-};
-
-struct city{
-	int id;
-	struct rota *ligacoes;
-};
-
 struct tour
 {
-	struct city *cities;
+	int *cities;
 	int cost;
 	int num_cities;
 };
@@ -60,16 +49,13 @@ int StackIsFull(stackT *stackP)
 void StackPush(stackT *stackP, stackElementT element)
 {
   if (StackIsFull(stackP)) {
-  	//printf("Full\n");
   	stackP->size++;
     stackP->contents = (stackElementT *) realloc(stackP->contents, sizeof(stackElementT) * stackP->size);
   }
 
 
   /* Put information in array; update top. */
-  //printf("push antes\n");
   stackP->contents[++stackP->top] = element;
-  //printf("push depois\n");
 }
 
 stackElementT StackPop(stackT *stackP)
@@ -82,11 +68,11 @@ stackElementT StackPop(stackT *stackP)
   return stackP->contents[stackP->top--];
 }
 
-int cityInTour(struct tour t, int cidade){
+int cityInTour(struct tour *t, int cidade){
 	int i;
-	for (i = 0; i < t.num_cities; i++)
+	for (i = 0; i < t->num_cities; i++)
 	{
-		if (t.cities[i].id == cidade)
+		if (t->cities[i] == cidade)
 		{
 			return 1;
 		}
@@ -94,9 +80,9 @@ int cityInTour(struct tour t, int cidade){
 	return 0;
 }
 
-int checkTour(struct tour t, int cidade, int cidadeInicial, int num_cidades)
+int checkTour(struct tour *t, int cidade, int cidadeInicial, int num_cidades)
 {
-	if (t.num_cities == num_cidades && cidade == cidadeInicial)
+	if (t->num_cities == num_cidades && cidade == cidadeInicial)
 	{
 		return 1;
 	}
@@ -110,62 +96,23 @@ int checkTour(struct tour t, int cidade, int cidadeInicial, int num_cidades)
 	}
 }
 
-void printTour(struct tour t)
+void printTour(struct tour *t)
 {
 	int i;
 	printf("Rota ");
-	for (i = 0; i < t.num_cities; i++)
+	for (i = 0; i < t->num_cities; i++)
 	{
-		printf("%d ", t.cities[i].id);
+		printf("%d ", t->cities[i]);
 	}
 	printf("\n");
-	printf("Custo = %d\n", t.cost);
+	printf("Custo = %d\n", t->cost);
 }
 
-void addCity(struct tour *t, struct city cidade, int num_cidades)
-{
-	//printf("addCity\n");
-	int i;
-	struct city cidadeOrigem = t->cities[t->num_cities - 1];
-	for (i = 0; i < num_cidades; i++)
-	{
-		if (cidadeOrigem.ligacoes[i].origemID == cidadeOrigem.id && cidadeOrigem.ligacoes[i].destinoID == cidade.id)
-		{
-			t->cost += cidadeOrigem.ligacoes[i].custo;
-		}
-	}
-	t->cities[t->num_cities++] = cidade;
-}
-
-void removeCity(struct tour *t, struct city cidade, int num_cidades)
-{
-	//printf("removeCity\n");
-	//printTour(*t);
-	//printf("%d ", t->num_cities);
-	t->num_cities--;
-	int i;
-	struct city cidadeOrigem = t->cities[t->num_cities - 1];
-	for (i = 0; i < num_cidades; i++)
-	{
-		if (cidadeOrigem.ligacoes[i].origemID == cidadeOrigem.id && cidadeOrigem.ligacoes[i].destinoID == cidade.id)
-		{
-			t->cost -= cidadeOrigem.ligacoes[i].custo;
-		}
-	}
-}
-
-void copyTour(struct tour *k, struct tour t, int num_cidades){
-	k->cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
-	k->num_cities = t.num_cities;
-	k->cost = t.cost;
-	memcpy(k->cities, t.cities, (num_cidades+1)*sizeof(struct city));
-}
-
-void printVector(struct city *cities, int num_cidades){
+void printVector(int *cities, int num_cidades){
 	int i;
 	for (i = 0; i < num_cidades; i++)
 	{
-		printf("%d ", cities[i].id);
+		printf("%d ", cities[i]);
 	}
 	printf("\n");
 }
@@ -177,90 +124,152 @@ void printStack(stackT stack){
 	}
 }
 
-int main(int argc, char *argv[]){
-	int i, j;
-	int num_cidades;
-	int cidadeInicial;
-	struct city *cidades;
+void addCity(struct tour *t, int cidade, int num_cidades, int **rotas)
+{
+	int cidadeOrigem = t->cities[t->num_cities - 1];
+	t->cost += rotas[cidadeOrigem][cidade];
+	t->cities[t->num_cities++] = cidade;
+}
+
+void removeCity(struct tour *t, int cidade, int num_cidades, int **rotas)
+{
+	t->num_cities--;
+	int cidadeOrigem = t->cities[t->num_cities - 1];
+	t->cost -= rotas[cidadeOrigem][cidade];
+}
+
+struct tour copyTour(struct tour *t, int num_cidades){
+	struct tour k;
+	int i;
+	k.num_cities = t->num_cities;
+	k.cost = t->cost;
+	k.cities = (int*) malloc((num_cidades+1)*sizeof(int));
+	for (i = 0; i < k.num_cities; ++i)
+	{
+		k.cities[i] = t->cities[i];
+	}
+	return k;
+}
+
+void initTour(struct tour *t, int cidadeInicial, int num_cidades)
+{
+	t->cities = (int*) malloc((num_cidades+1)*sizeof(int));
+	t->cost = 0;
+	t->num_cities = 1;
+	t->cities[0] = cidadeInicial;
+}
+
+void updateTour(struct tour *bestTour, struct tour *t)
+{
+	if (t->cost < bestTour->cost)
+	{
+		*bestTour = *t;
+	}
+}
+
+struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int cidadeInicial, int **rotas)
+{
+	int i;
 	struct tour t;
 	struct tour bestTour;
-	stackT stack; 
-	stackT stackTemp;
-	double start, finish;
-
-	StackInit(&stack);
 	bestTour.cost = 99999;
+	stackT stack;
+	StackInit(&stack);
 
-	scanf("%d", &num_cidades);
-	scanf("%d", &cidadeInicial);
-
-	cidades = (struct city*) malloc(num_cidades*(sizeof(struct city)));
-
-
-	for (i = 0; i < num_cidades; i++)
-	{
-		cidades[i].id = i;
-		cidades[i].ligacoes = (struct rota*) malloc((num_cidades)*sizeof(struct rota));
-		for (j = 0; j < num_cidades; j++)
-		{
-			//printf("%d %d\n", i, j);
-			scanf("%d", &(cidades[i].ligacoes[j].custo));
-			cidades[i].ligacoes[j].origemID = i;
-			cidades[i].ligacoes[j].destinoID = j;
-		}
-	}
-
-	// for (i = 0; i < num_cidades; i++)
-	// {
-	// 	printf("Cidade %d\n", cidades[i].id);
-	// 	for (j = 0; j < num_cidades; j++)
-	// 	{
-	// 		printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
-	// 	}
-	// }
-
-	t.cities = (struct city*) malloc((num_cidades+1)*sizeof(struct city));
-	t.cost = 0;
-	t.num_cities = 1;
-	t.cities[0] = cidades[cidadeInicial];
-
-
-	GET_TIME(start);
-	StackPush(&stack, t);
+	StackPush(&stack, *tourInicial);
 	while(!StackIsEmpty(&stack)){
 		t = StackPop(&stack);
 		if (t.num_cities == num_cidades + 1)
 		{
-			if (t.cost < bestTour.cost)
-			{
-				bestTour = t;
-			}
+			updateTour(&bestTour, &t);
 		}
 		else{
 
 			for (i = num_cidades - 1; i >= 0; i--)
 			{
-				struct tour k;
-				if (checkTour(t, i, cidadeInicial, num_cidades))
+				if (checkTour(&t, i, cidadeInicial, num_cidades))
 				{
-					copyTour(&k, t, num_cidades);
-					addCity(&k, cidades[i], num_cidades);
+					addCity(&t, i, num_cidades, rotas);
+					struct tour k = copyTour(&t, num_cidades);
 					StackPush(&stack, k);
-					removeCity(&k, cidades[i], num_cidades);
+					removeCity(&t, i, num_cidades, rotas);
 				}
 			}
 		}
+		if (bestTour.cities != t.cities) free(t.cities);
 	}
+	StackDestroy(&stack);
+	return bestTour;
+
+}
+
+int main(int argc, char *argv[]){
+	int i, j;
+	int num_cidades;
+	int cidadeInicial;
+	int **rotas;
+	struct tour t;
+	struct tour bestTour;
+	double start, finish;
+	struct tour *tourIniciais;
+	stackT stack;
+	StackInit(&stack);
+
+
+	bestTour.cost = 99999;
+
+	scanf("%d", &num_cidades);
+	scanf("%d", &cidadeInicial);
+
+	tourIniciais = (struct tour*) malloc((num_cidades-1)*(sizeof(struct tour)));
+	rotas = (int **)malloc(num_cidades*sizeof(int*));
+
+	for (i = 0; i < num_cidades; i++)
+	{
+		rotas[i] = (int *)malloc(num_cidades*sizeof(int));
+		for (j = 0; j < num_cidades; j++)
+		{
+			scanf("%d", &rotas[i][j]);
+		}
+	}
+
+	initTour(&t, cidadeInicial, num_cidades);
+
+	GET_TIME(start);
+
+	StackPush(&stack, t);
+	while(!StackIsEmpty(&stack)){
+		t = StackPop(&stack);
+		if (t.num_cities == num_cidades + 1)
+		{
+			updateTour(&bestTour, &t);
+		}
+		else{
+
+			for (i = num_cidades - 1; i >= 0; i--)
+			{
+				if (checkTour(&t, i, cidadeInicial, num_cidades))
+				{
+					addCity(&t, i, num_cidades, rotas);
+					struct tour k = copyTour(&t, num_cidades);
+					StackPush(&stack, k);
+					removeCity(&t, i, num_cidades, rotas);
+				}
+			}
+		}
+		if (bestTour.cities != t.cities) free(t.cities);
+	}
+
+	
 	GET_TIME(finish);
 
-	printf("finish\n");
-	printTour(bestTour);
+	printTour(&bestTour);
 	printf("tempo=%f\n", finish-start);
 
-	free(bestTour.cities);
-	if (bestTour.cities != t.cities) free(t.cities);
-	free(cidades);
 	StackDestroy(&stack);
+	free(bestTour.cities);
+	free(tourIniciais);
+	free(rotas);
 
 	return 0;
 }

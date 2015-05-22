@@ -3,17 +3,6 @@
 #include <omp.h>
 #include "timer.h"
 
-struct rota{
-		int origemID;
-		int destinoID;
-		int custo;
-};
-
-struct city{
-	int id;
-	struct rota *ligacoes;
-};
-
 struct tour
 {
 	int *cities;
@@ -61,17 +50,13 @@ int StackIsFull(stackT *stackP)
 void StackPush(stackT *stackP, stackElementT element)
 {
   if (StackIsFull(stackP)) {
-  	//printf("Full\n");
   	stackP->size++;
-  	printf("size=%d\n", stackP->size);
     stackP->contents = (stackElementT *) realloc(stackP->contents, sizeof(stackElementT) * stackP->size);
   }
 
 
   /* Put information in array; update top. */
-  //printf("push antes\n");
   stackP->contents[++stackP->top] = element;
-  //printf("push depois\n");
 }
 
 stackElementT StackPop(stackT *stackP)
@@ -124,79 +109,6 @@ void printTour(struct tour *t)
 	printf("Custo = %d\n", t->cost);
 }
 
-void addCity(struct tour *t, int cidade, int num_cidades, int **rotas)
-{
-	//printf("addCity\n");
-	int cidadeOrigem = t->cities[t->num_cities - 1];
-	t->cost += rotas[cidadeOrigem][cidade];
-	t->cities[t->num_cities++] = cidade;
-}
-
-void removeCity(struct tour *t, int cidade, int num_cidades, int **rotas)
-{
-	//printf("removeCity\n");
-	//printTour(*t);
-	//printf("%d ", t->num_cities);
-	t->num_cities--;
-	int cidadeOrigem = t->cities[t->num_cities - 1];
-	t->cost -= rotas[cidadeOrigem][cidade];
-}
-
-void copyTour(struct tour *k, struct tour *t, int num_cidades){
-	k->cities = (int*) malloc((num_cidades+1)*sizeof(int));
-	k->num_cities = t->num_cities;
-	k->cost = t->cost;
-	memcpy(k->cities, t->cities, (num_cidades+1)*sizeof(int));
-}
-
-void initTour(struct tour *t, int cidadeInicial, int num_cidades)
-{
-	t->cities = (int*) malloc((num_cidades+1)*sizeof(int));
-	t->cost = 0;
-	t->num_cities = 1;
-	t->cities[0] = cidadeInicial;
-}
-
-void calculateMinimumCost(struct tour *tourInicial, struct tour *bestTour, int num_cidades, int cidadeInicial, int **rotas)
-{
-	int i;
-	struct tour t;
-	stackT stack;
-	StackInit(&stack);
-
-	StackPush(&stack, *tourInicial);
-	while(!StackIsEmpty(&stack)){
-		t = StackPop(&stack);
-		if (t.num_cities == num_cidades + 1)
-		{
-		# 	pragma omp critical
-			if (t.cost < bestTour->cost)
-			{
-				*bestTour = t;
-			}
-		}
-		else{
-
-			for (i = num_cidades - 1; i >= 0; i--)
-			{
-				struct tour k;
-				if (checkTour(&t, i, cidadeInicial, num_cidades))
-				{
-					copyTour(&k, &t, num_cidades);
-					addCity(&k, i, num_cidades, rotas);
-					StackPush(&stack, k);
-					//removeCity(&k, cidades[i], num_cidades, rotas);
-				}
-			}
-			free(t.cities);
-		}
-	}
-	StackDestroy(&stack);
-# 	pragma omp critical
-	if (bestTour->cities != t.cities) free(t.cities);
-
-}
-
 void printVector(int *cities, int num_cidades){
 	int i;
 	for (i = 0; i < num_cidades; i++)
@@ -211,6 +123,85 @@ void printStack(stackT stack){
 		struct tour t = StackPop(&stack);
 		printVector(t.cities, t.num_cities);
 	}
+}
+
+void addCity(struct tour *t, int cidade, int num_cidades, int **rotas)
+{
+	int cidadeOrigem = t->cities[t->num_cities - 1];
+	t->cost += rotas[cidadeOrigem][cidade];
+	t->cities[t->num_cities++] = cidade;
+}
+
+void removeCity(struct tour *t, int cidade, int num_cidades, int **rotas)
+{
+	t->num_cities--;
+	int cidadeOrigem = t->cities[t->num_cities - 1];
+	t->cost -= rotas[cidadeOrigem][cidade];
+}
+
+struct tour copyTour(struct tour *t, int num_cidades){
+	struct tour k;
+	int i;
+	k.num_cities = t->num_cities;
+	k.cost = t->cost;
+	k.cities = (int*) malloc((num_cidades+1)*sizeof(int));
+	for (i = 0; i < k.num_cities; ++i)
+	{
+		k.cities[i] = t->cities[i];
+	}
+	return k;
+}
+
+void initTour(struct tour *t, int cidadeInicial, int num_cidades)
+{
+	t->cities = (int*) malloc((num_cidades+1)*sizeof(int));
+	t->cost = 0;
+	t->num_cities = 1;
+	t->cities[0] = cidadeInicial;
+}
+
+void updateTour(struct tour *bestTour, struct tour *t)
+{
+	if (t->cost < bestTour->cost)
+	{
+		*bestTour = *t;
+	}
+}
+
+struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int cidadeInicial, int **rotas)
+{
+	int i;
+	struct tour t;
+	struct tour bestTour;
+	bestTour.cost = 99999;
+	stackT stack;
+	StackInit(&stack);
+
+	StackPush(&stack, *tourInicial);
+	while(!StackIsEmpty(&stack)){
+		t = StackPop(&stack);
+		if (t.num_cities == num_cidades + 1)
+		{
+			updateTour(&bestTour, &t);
+		}
+		else{
+
+			for (i = num_cidades - 1; i >= 0; i--)
+			{
+				if (checkTour(&t, i, cidadeInicial, num_cidades))
+				{
+					addCity(&t, i, num_cidades, rotas);
+					struct tour k = copyTour(&t, num_cidades);
+					StackPush(&stack, k);
+					removeCity(&t, i, num_cidades, rotas);
+				}
+			}
+		}
+		if (bestTour.cities != t.cities) free(t.cities);
+	}
+	StackDestroy(&stack);
+	return bestTour;
+
 }
 
 int main(int argc, char *argv[]){
@@ -240,19 +231,9 @@ int main(int argc, char *argv[]){
 		matriz[i] = (int *)malloc(num_cidades*sizeof(int));
 		for (j = 0; j < num_cidades; j++)
 		{
-			//printf("%d %d\n", i, j);
 			scanf("%d", &matriz[i][j]);
 		}
 	}
-
-	// for (i = 0; i < num_cidades; i++)
-	// {
-	// 	printf("Cidade %d\n", cidades[i].id);
-	// 	for (j = 0; j < num_cidades; j++)
-	// 	{
-	// 		printf("Rota: origem %d, destino %d, custo %d\n", cidades[i].ligacoes[j].origemID, cidades[i].ligacoes[j].destinoID, cidades[i].ligacoes[j].custo);
-	// 	}
-	// }
 
 	initTour(&t, cidadeInicial, num_cidades);
 
@@ -270,19 +251,20 @@ int main(int argc, char *argv[]){
 #	pragma omp parallel for num_threads(thread_count)
 	for (i = 0; i < num_cidades-1; i++)
 	{
-		calculateMinimumCost(&tourIniciais[i], &bestTour, num_cidades, cidadeInicial, matriz);
+		printf("%d\n", omp_get_thread_num());
+		struct tour localBestTour = calculateMinimumCost(&tourIniciais[i], num_cidades, cidadeInicial, matriz);
+#		pragma omp critical
+		updateTour(&bestTour, &localBestTour);
 	}	
 
 	
 	GET_TIME(finish);
 
-	printf("finish\n");
 	printTour(&bestTour);
 	printf("tempo=%f\n", finish-start);
 
 	free(bestTour.cities);
 	free(tourIniciais);
-	//if (bestTour.cities != t.cities) free(t.cities);
 	free(matriz);
 
 	return 0;
