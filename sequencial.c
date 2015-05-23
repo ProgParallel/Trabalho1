@@ -159,48 +159,22 @@ void initTour(struct tour *t, int cidadeInicial, int num_cidades)
 	t->cities[0] = cidadeInicial;
 }
 
-void updateTour(struct tour *bestTour, struct tour *t)
+int checkBestTour(struct tour *bestTour, struct tour *t)
 {
-	if (t->cost < bestTour->cost)
+	if (t->cost < bestTour->cost  || bestTour->cities == NULL)
 	{
-		*bestTour = *t;
+		return 1;
+	}else{
+		return 0;
 	}
 }
 
-struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int cidadeInicial, int **rotas)
+void updateTour(struct tour *bestTour, struct tour *t)
 {
-	int i;
-	struct tour t;
-	struct tour bestTour;
-	bestTour.cost = 99999;
-	stackT stack;
-	StackInit(&stack);
-
-	StackPush(&stack, *tourInicial);
-	while(!StackIsEmpty(&stack)){
-		t = StackPop(&stack);
-		if (t.num_cities == num_cidades + 1)
-		{
-			updateTour(&bestTour, &t);
-		}
-		else{
-
-			for (i = num_cidades - 1; i >= 0; i--)
-			{
-				if (checkTour(&t, i, cidadeInicial, num_cidades))
-				{
-					addCity(&t, i, num_cidades, rotas);
-					struct tour k = copyTour(&t, num_cidades);
-					StackPush(&stack, k);
-					removeCity(&t, i, num_cidades, rotas);
-				}
-			}
-		}
-		if (bestTour.cities != t.cities) free(t.cities);
+	if (checkBestTour(bestTour, t))
+	{
+		*bestTour = *t;
 	}
-	StackDestroy(&stack);
-	return bestTour;
-
 }
 
 int main(int argc, char *argv[]){
@@ -217,6 +191,7 @@ int main(int argc, char *argv[]){
 
 
 	bestTour.cost = 99999;
+	bestTour.cities = NULL;
 
 	scanf("%d", &num_cidades);
 	scanf("%d", &cidadeInicial);
@@ -251,8 +226,11 @@ int main(int argc, char *argv[]){
 				if (checkTour(&t, i, cidadeInicial, num_cidades))
 				{
 					addCity(&t, i, num_cidades, rotas);
-					struct tour k = copyTour(&t, num_cidades);
-					StackPush(&stack, k);
+					if (checkBestTour(&bestTour, &t))
+					{
+						struct tour k = copyTour(&t, num_cidades);
+						StackPush(&stack, k);
+					}
 					removeCity(&t, i, num_cidades, rotas);
 				}
 			}

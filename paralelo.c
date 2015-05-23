@@ -160,9 +160,18 @@ void initTour(struct tour *t, int cidadeInicial, int num_cidades)
 	t->cities[0] = cidadeInicial;
 }
 
+int checkBestTour(struct tour *bestTour, struct tour *t)
+{
+	if (t->cost < bestTour->cost || bestTour->cities == NULL)
+	{
+		return 1;
+	}
+	return 0;
+}
+
 void updateTour(struct tour *bestTour, struct tour *t)
 {
-	if (t->cost < bestTour->cost)
+	if (checkBestTour(bestTour, t))
 	{
 		*bestTour = *t;
 	}
@@ -170,10 +179,11 @@ void updateTour(struct tour *bestTour, struct tour *t)
 
 struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int cidadeInicial, int **rotas)
 {
-	int i;
+	int i, stop;
 	struct tour t;
 	struct tour bestTour;
 	bestTour.cost = 99999;
+	bestTour.cities = NULL;
 	stackT stack;
 	StackInit(&stack);
 
@@ -191,8 +201,14 @@ struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int 
 				if (checkTour(&t, i, cidadeInicial, num_cidades))
 				{
 					addCity(&t, i, num_cidades, rotas);
-					struct tour k = copyTour(&t, num_cidades);
-					StackPush(&stack, k);
+				#	pragma omp critical
+					stop = checkBestTour(&bestTour, &t);
+					
+					if (stop)
+					{
+						struct tour k = copyTour(&t, num_cidades);
+						StackPush(&stack, k);
+					}
 					removeCity(&t, i, num_cidades, rotas);
 				}
 			}
@@ -216,6 +232,7 @@ int main(int argc, char *argv[]){
 
 
 	bestTour.cost = 99999;
+	bestTour.cities = NULL;
 
 	thread_count = strtol(argv[1], NULL, 10);
 
