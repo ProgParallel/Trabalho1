@@ -190,8 +190,9 @@ struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int 
 	StackPush(&stack, *tourInicial);
 	while(!StackIsEmpty(&stack)){
 		t = StackPop(&stack);
-		if (t.num_cities == num_cidades + 1)
+		if (t.num_cities == num_cidades)
 		{
+			addCity(&t, cidadeInicial, num_cidades, rotas);
 			updateTour(&bestTour, &t);
 		}
 		else{
@@ -268,7 +269,7 @@ int main(int argc, char *argv[]){
 #	pragma omp parallel for num_threads(thread_count)
 	for (i = 0; i < num_cidades-1; i++)
 	{
-		printf("%d\n", omp_get_thread_num());
+		//printf("%d\n", omp_get_thread_num());
 		struct tour localBestTour = calculateMinimumCost(&tourIniciais[i], num_cidades, cidadeInicial, matriz);
 #		pragma omp critical
 		updateTour(&bestTour, &localBestTour);

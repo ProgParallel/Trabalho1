@@ -215,8 +215,9 @@ int main(int argc, char *argv[]){
 	StackPush(&stack, t);
 	while(!StackIsEmpty(&stack)){
 		t = StackPop(&stack);
-		if (t.num_cities == num_cidades + 1)
+		if (t.num_cities == num_cidades)
 		{
+			addCity(&t, cidadeInicial, num_cidades, rotas);
 			updateTour(&bestTour, &t);
 		}
 		else{
