@@ -169,21 +169,21 @@ int checkBestTour(struct tour *bestTour, struct tour *t)
 	return 0;
 }
 
-void updateTour(struct tour *bestTour, struct tour *t)
+void updateTour(struct tour *bestTour, struct tour *t, int num_cidades)
 {
 	if (checkBestTour(bestTour, t))
 	{
-		*bestTour = *t;
+		*bestTour = copyTour(t, num_cidades);
 	}
 }
 
-struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int cidadeInicial, int **rotas)
+void calculateMinimumCost(struct tour *tourInicial, struct tour *bestTour, int num_cidades, int cidadeInicial, int **rotas)
 {
 	int i, stop;
 	struct tour t;
-	struct tour bestTour;
-	bestTour.cost = 99999;
-	bestTour.cities = NULL;
+	//struct tour bestTour;
+	//bestTour.cost = 99999;
+	//bestTour.cities = NULL;
 	stackT stack;
 	StackInit(&stack);
 
@@ -193,7 +193,8 @@ struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int 
 		if (t.num_cities == num_cidades)
 		{
 			addCity(&t, cidadeInicial, num_cidades, rotas);
-			updateTour(&bestTour, &t);
+		#	pragma omp critical
+			updateTour(bestTour, &t, num_cidades);
 		}
 		else{
 
@@ -203,7 +204,7 @@ struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int 
 				{
 					addCity(&t, i, num_cidades, rotas);
 				#	pragma omp critical
-					stop = checkBestTour(&bestTour, &t);
+					stop = checkBestTour(bestTour, &t);
 					
 					if (stop)
 					{
@@ -214,10 +215,9 @@ struct tour calculateMinimumCost(struct tour *tourInicial, int num_cidades, int 
 				}
 			}
 		}
-		if (bestTour.cities != t.cities) free(t.cities);
+		free(t.cities);
 	}
 	StackDestroy(&stack);
-	return bestTour;
 
 }
 
@@ -256,23 +256,27 @@ int main(int argc, char *argv[]){
 	initTour(&t, cidadeInicial, num_cidades);
 
 	GET_TIME(start);
-	j = 0;
+	// j = 0;
+	// for (i = 0; i < num_cidades; i++)
+	// {
+	// 	if (i != cidadeInicial)
+	// 	{
+	// 		initTour(&tourIniciais[j], cidadeInicial, num_cidades);
+	// 		addCity(&tourIniciais[j], i, num_cidades, matriz);
+	// 		j++;
+	// 	}
+	// }
+#	pragma omp parallel for num_threads(thread_count)
 	for (i = 0; i < num_cidades; i++)
 	{
 		if (i != cidadeInicial)
 		{
-			initTour(&tourIniciais[j], cidadeInicial, num_cidades);
-			addCity(&tourIniciais[j], i, num_cidades, matriz);
-			j++;
+			struct tour tourInicial;
+			initTour(&tourInicial, cidadeInicial, num_cidades);
+			addCity(&tourInicial, i, num_cidades, matriz);
+			//printf("%d\n", omp_get_thread_num());
+			calculateMinimumCost(&tourInicial, &bestTour, num_cidades, cidadeInicial, matriz);
 		}
-	}
-#	pragma omp parallel for num_threads(thread_count)
-	for (i = 0; i < num_cidades-1; i++)
-	{
-		//printf("%d\n", omp_get_thread_num());
-		struct tour localBestTour = calculateMinimumCost(&tourIniciais[i], num_cidades, cidadeInicial, matriz);
-#		pragma omp critical
-		updateTour(&bestTour, &localBestTour);
 	}	
 
 	
