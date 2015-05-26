@@ -2,253 +2,263 @@
 #include <stdlib.h>
 #include "timer.h"
 
-struct tour
-{
-	int *cities;
-	int cost;
-	int num_cities;
-};
-
-typedef struct tour stackElementT;
-
+//Tour: Permite salvar o vetor de cidades que o compõem, o custo do trajeto e a quantidade de cidades
 typedef struct {
-  stackElementT *contents;
+	int *cidades;
+	int cost;
+	int num_cidades;
+} tour_t;
+
+//Estrutura que simula uma pilha
+typedef struct {
+  tour_t *contents;
   int size;
   int top;
-} stackT;
+} pilha_t;
 
-void StackInit(stackT *stackP)
-{
-  stackP->contents = (stackElementT *) malloc(sizeof(stackElementT) * 1);
-  /* Allocate a new array to hold the contents. */
+// Funções da pilha
+void pilha_init(pilha_t *stack);
+void pilha_destroy(pilha_t *stack);
+int pilha_vazia(pilha_t *stack);
+int pilha_cheia(pilha_t *stack);
+void pilha_push(pilha_t *stack, tour_t element);
+tour_t pilha_pop(pilha_t *stack);
+void print_pilha(pilha_t stack);
 
-  stackP->size = 1;
-  stackP->top = -1;  /* I.e., empty */
-}
-
-void StackDestroy(stackT *stackP)
-{
-  /* Get rid of array. */
-  free(stackP->contents);
-
-  stackP->contents = NULL;
-  stackP->size = 0;
-  stackP->top = -1;  /* I.e., empty */
-}
-
-int StackIsEmpty(stackT *stackP)
-{
-  return stackP->top < 0;
-}
-
-int StackIsFull(stackT *stackP)
-{
-  return stackP->top >= stackP->size - 1;
-}
-
-void StackPush(stackT *stackP, stackElementT element)
-{
-  if (StackIsFull(stackP)) {
-  	stackP->size++;
-    stackP->contents = (stackElementT *) realloc(stackP->contents, sizeof(stackElementT) * stackP->size);
-  }
+// Funções do tour
+void init_tour(tour_t *t, int cidade_inicial, int num_cidades);
+tour_t copy_tour(tour_t *t, int num_cidades);
+void update_tour(tour_t *best_tour, tour_t *t);
+int check_tour(tour_t *t, int cidade, int cidade_inicial, int num_cidades);
+int is_best_tour(tour_t *best_tour, tour_t *t);
+void add_cidade(tour_t *t, int cidade, int num_cidades, int **rotas);
+void remove_cidade(tour_t *t, int cidade, int num_cidades, int **rotas);
+int cidade_no_tour(tour_t *t, int cidade);
+void print_tour(tour_t *t);
 
 
-  /* Put information in array; update top. */
-  stackP->contents[++stackP->top] = element;
-}
-
-stackElementT StackPop(stackT *stackP)
-{
-  if (StackIsEmpty(stackP)) {
-    fprintf(stderr, "Can't pop element from stack: stack is empty.\n");
-    exit(1);  /* Exit, returning error code. */
-  }
-
-  return stackP->contents[stackP->top--];
-}
-
-int cityInTour(struct tour *t, int cidade){
-	int i;
-	for (i = 0; i < t->num_cities; i++)
-	{
-		if (t->cities[i] == cidade)
-		{
-			return 1;
-		}
-	}
-	return 0;
-}
-
-int checkTour(struct tour *t, int cidade, int cidadeInicial, int num_cidades)
-{
-	if (t->num_cities == num_cidades && cidade == cidadeInicial)
-	{
-		return 1;
-	}
-	else if (!cityInTour(t, cidade))
-	{
-		return 1;
-	}
-	else
-	{
-		return 0;
-	}
-}
-
-void printTour(struct tour *t)
-{
-	int i;
-	printf("Rota ");
-	for (i = 0; i < t->num_cities; i++)
-	{
-		printf("%d ", t->cities[i]);
-	}
-	printf("\n");
-	printf("Custo = %d\n", t->cost);
-}
-
-void printVector(int *cities, int num_cidades){
-	int i;
-	for (i = 0; i < num_cidades; i++)
-	{
-		printf("%d ", cities[i]);
-	}
-	printf("\n");
-}
-
-void printStack(stackT stack){
-	while(!StackIsEmpty(&stack)){
-		struct tour t = StackPop(&stack);
-		printVector(t.cities, t.num_cities);
-	}
-}
-
-void addCity(struct tour *t, int cidade, int num_cidades, int **rotas)
-{
-	int cidadeOrigem = t->cities[t->num_cities - 1];
-	t->cost += rotas[cidadeOrigem][cidade];
-	t->cities[t->num_cities++] = cidade;
-}
-
-void removeCity(struct tour *t, int cidade, int num_cidades, int **rotas)
-{
-	t->num_cities--;
-	int cidadeOrigem = t->cities[t->num_cities - 1];
-	t->cost -= rotas[cidadeOrigem][cidade];
-}
-
-struct tour copyTour(struct tour *t, int num_cidades){
-	struct tour k;
-	int i;
-	k.num_cities = t->num_cities;
-	k.cost = t->cost;
-	k.cities = (int*) malloc((num_cidades+1)*sizeof(int));
-	for (i = 0; i < k.num_cities; ++i)
-	{
-		k.cities[i] = t->cities[i];
-	}
-	return k;
-}
-
-void initTour(struct tour *t, int cidadeInicial, int num_cidades)
-{
-	t->cities = (int*) malloc((num_cidades+1)*sizeof(int));
-	t->cost = 0;
-	t->num_cities = 1;
-	t->cities[0] = cidadeInicial;
-}
-
-int checkBestTour(struct tour *bestTour, struct tour *t)
-{
-	if (t->cost < bestTour->cost  || bestTour->cities == NULL)
-	{
-		return 1;
-	}else{
-		return 0;
-	}
-}
-
-void updateTour(struct tour *bestTour, struct tour *t)
-{
-	if (checkBestTour(bestTour, t))
-	{
-		*bestTour = *t;
-	}
-}
-
-int main(int argc, char *argv[]){
+int main(int argc, char *argv[]) {
 	int i, j;
 	int num_cidades;
-	int cidadeInicial;
-	int **rotas;
-	struct tour t;
-	struct tour bestTour;
-	double start, finish;
-	struct tour *tourIniciais;
-	stackT stack;
-	StackInit(&stack);
+	int cidade_inicial;
+	// Matriz de custos
+	int** rotas;
+	//Tour teste e melhor tour
+	tour_t t, best_tour;
+	double start, end;
+	pilha_t pilha;
 
+	pilha_init(&pilha);
 
-	bestTour.cost = 99999;
-	bestTour.cities = NULL;
+	best_tour.cost = 99999;
+	best_tour.cidades = NULL;
 
 	scanf("%d", &num_cidades);
-	scanf("%d", &cidadeInicial);
+	scanf("%d", &cidade_inicial);
 
-	tourIniciais = (struct tour*) malloc((num_cidades-1)*(sizeof(struct tour)));
-	rotas = (int **)malloc(num_cidades*sizeof(int*));
+	rotas = (int**) malloc(num_cidades*sizeof(int*));
 
-	for (i = 0; i < num_cidades; i++)
-	{
-		rotas[i] = (int *)malloc(num_cidades*sizeof(int));
-		for (j = 0; j < num_cidades; j++)
-		{
+	// Ler entrada para salvar na matriz de entrada
+	for (i = 0; i < num_cidades; i++) {
+		rotas[i] = (int*) malloc(num_cidades*sizeof(int));
+
+		for (j = 0; j < num_cidades; j++) {
 			scanf("%d", &rotas[i][j]);
 		}
 	}
 
-	initTour(&t, cidadeInicial, num_cidades);
+	//Serve como construtor do tour teste
+	init_tour(&t, cidade_inicial, num_cidades);
 
 	GET_TIME(start);
 
-	StackPush(&stack, t);
-	while(!StackIsEmpty(&stack)){
-		t = StackPop(&stack);
-		if (t.num_cities == num_cidades)
-		{
-			addCity(&t, cidadeInicial, num_cidades, rotas);
-			updateTour(&bestTour, &t);
-		}
-		else{
+	pilha_push(&pilha, t);
+	//Enquanto a pilha tiver algum tour
+	while (!pilha_vazia(&pilha)) {
+		t = pilha_pop(&pilha);
 
-			for (i = num_cidades - 1; i >= 0; i--)
-			{
-				if (checkTour(&t, i, cidadeInicial, num_cidades))
-				{
-					addCity(&t, i, num_cidades, rotas);
-					if (checkBestTour(&bestTour, &t))
-					{
-						struct tour k = copyTour(&t, num_cidades);
-						StackPush(&stack, k);
+		//Se o tour já tiver passado por todas as cidades, vamos adicionar a cidade inicial e verificar se ele é o melhor tour
+		if (t.num_cidades == num_cidades) {
+			add_cidade(&t, cidade_inicial, num_cidades, rotas);
+			update_tour(&best_tour, &t);
+		} else {
+			//Se o tour não tiver passado, vamos criar uma rota para ele
+			for (i = num_cidades - 1; i >= 0; i--) {
+				//Verifica se o tour é válido com a adição da cidade i. Se sim, adiciona a cidade.
+				if (check_tour(&t, i, cidade_inicial, num_cidades)) {
+					add_cidade(&t, i, num_cidades, rotas);
+
+					//Verifica se o tour é o melhor tour
+					if (is_best_tour(&best_tour, &t)) {
+						tour_t k = copy_tour(&t, num_cidades);
+						pilha_push(&pilha, k);
 					}
-					removeCity(&t, i, num_cidades, rotas);
+
+					remove_cidade(&t, i, num_cidades, rotas);
 				}
 			}
 		}
-		if (bestTour.cities != t.cities) free(t.cities);
+
+		//Se o melhor tour já tiver passado por todas as cidades
+		if (best_tour.cidades != t.cidades) {
+			free(t.cidades);
+		}
 	}
 
 	
-	GET_TIME(finish);
+	GET_TIME(end);
 
-	printTour(&bestTour);
-	printf("tempo=%f\n", finish-start);
+	print_tour(&best_tour);
 
-	StackDestroy(&stack);
-	free(bestTour.cities);
-	free(tourIniciais);
+	printf("Tempo de execução: %f\n", end - start);
+
+	// Liberar recursos
+	pilha_destroy(&pilha);
+	free(best_tour.cidades);
 	free(rotas);
 
 	return 0;
+}
+
+
+// Funções da pilha
+
+void pilha_init(pilha_t *stack) {
+  stack->contents = (tour_t *) malloc(sizeof(tour_t) * 1);
+
+  stack->size = 1;
+  stack->top = -1;
+}
+
+void pilha_destroy(pilha_t *stack) {
+  free(stack->contents);
+
+  stack->contents = NULL;
+  stack->size = 0;
+  stack->top = -1;
+}
+
+int pilha_vazia(pilha_t *stack) {
+  return (stack->top < 0);
+}
+
+int pilha_cheia(pilha_t *stack) {
+  return (stack->top >= stack->size - 1);
+}
+
+void pilha_push(pilha_t *stack, tour_t element) {
+  if (pilha_cheia(stack)) {
+  	stack->size++;
+    stack->contents = (tour_t *) realloc(stack->contents, sizeof(tour_t) * stack->size);
+  }
+
+  stack->contents[++stack->top] = element;
+}
+
+tour_t pilha_pop(pilha_t *stack) {
+  if (pilha_vazia(stack)) {
+    fprintf(stderr, "Can't pop element from stack: stack is empty.\n");
+    exit(1);
+  }
+
+  return stack->contents[stack->top--];
+}
+
+void print_pilha(pilha_t stack) {
+	int i;
+
+	while (!pilha_vazia(&stack)) {
+		tour_t t = pilha_pop(&stack);
+
+		for (i = 0; i < t.num_cidades; i++) {
+			printf("%d ", t.cidades[i]);
+		}
+
+		printf("\n");
+	}
+}
+
+
+// Funções do tour
+
+void init_tour(tour_t *t, int cidade_inicial, int num_cidades) {
+	t->cidades = (int*) malloc((num_cidades+1)*sizeof(int));
+	t->cost = 0;
+	t->num_cidades = 1;
+	t->cidades[0] = cidade_inicial;
+}
+
+tour_t copy_tour(tour_t *t, int num_cidades) {
+	tour_t k;
+	int i;
+	k.num_cidades = t->num_cidades;
+	k.cost = t->cost;
+	k.cidades = (int*) malloc((num_cidades+1)*sizeof(int));
+	for (i = 0; i < k.num_cidades; ++i)
+	{
+		k.cidades[i] = t->cidades[i];
+	}
+	return k;
+}
+
+void update_tour(tour_t *best_tour, tour_t *t) {
+	if (is_best_tour(best_tour, t)) {
+		*best_tour = *t;
+	}
+}
+
+//Verifica se o tour ou é uma rota que passa por todas as cidades ou se não contém a cidade inicial em seu trajeto (adicionada só no fim)
+//Se um desses fatos ocorrer, o tur é considerado válido
+int check_tour(tour_t *t, int cidade, int cidade_inicial, int num_cidades) {
+	if (t->num_cidades == num_cidades && cidade == cidade_inicial) {
+		return 1;
+	} else if (!cidade_no_tour(t, cidade)) {
+		return 1;
+	}
+	
+	return 0;
+}
+
+int is_best_tour(tour_t *best_tour, tour_t *t) {
+	if (t->cost < best_tour->cost  || best_tour->cidades == NULL) {
+		return 1;
+	}
+
+	return 0;
+}
+
+void add_cidade(tour_t *t, int cidade, int num_cidades, int **rotas) {
+	int cidadeOrigem = t->cidades[t->num_cidades - 1];
+	t->cost += rotas[cidadeOrigem][cidade];
+	t->cidades[t->num_cidades++] = cidade;
+}
+
+void remove_cidade(tour_t *t, int cidade, int num_cidades, int **rotas) {
+	t->num_cidades--;
+	int cidadeOrigem = t->cidades[t->num_cidades - 1];
+	t->cost -= rotas[cidadeOrigem][cidade];
+}
+
+int cidade_no_tour(tour_t *t, int cidade) {
+	int i;
+
+	for (i = 0; i < t->num_cidades; i++) {
+		if (t->cidades[i] == cidade) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+void print_tour(tour_t *t) {
+	int i;
+	printf("Rota ");
+
+	for (i = 0; i < t->num_cidades; i++) {
+		printf("%d ", t->cidades[i]);
+	}
+
+	printf("\n");
+	printf("Custo = %d\n", t->cost);
 }
