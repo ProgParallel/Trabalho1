@@ -2,12 +2,14 @@
 #include <stdlib.h>
 #include "timer.h"
 
+//Tour: Permite salvar o vetor de cidades que o compõem, o custo do trajeto e a quantidade de cidades
 typedef struct {
 	int *cidades;
 	int cost;
 	int num_cidades;
 } tour_t;
 
+//Estrutura que simula uma pilha
 typedef struct {
   tour_t *contents;
   int size;
@@ -39,9 +41,10 @@ int main(int argc, char *argv[]) {
 	int i, j;
 	int num_cidades;
 	int cidade_inicial;
+	// Matriz de custos
 	int** rotas;
+	//Tour teste e melhor tour
 	tour_t t, best_tour;
-	tour_t* tours_iniciais;
 	double start, end;
 	pilha_t pilha;
 
@@ -53,10 +56,9 @@ int main(int argc, char *argv[]) {
 	scanf("%d", &num_cidades);
 	scanf("%d", &cidade_inicial);
 
-	tours_iniciais = (tour_t*) malloc((num_cidades-1)*(sizeof(tour_t)));
 	rotas = (int**) malloc(num_cidades*sizeof(int*));
 
-	// Ler entrada
+	// Ler entrada para salvar na matriz de entrada
 	for (i = 0; i < num_cidades; i++) {
 		rotas[i] = (int*) malloc(num_cidades*sizeof(int));
 
@@ -65,23 +67,28 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	//Serve como construtor do tour teste
 	init_tour(&t, cidade_inicial, num_cidades);
 
 	GET_TIME(start);
 
-	// Calcular tours iniciais e adicionar na pilha
 	pilha_push(&pilha, t);
+	//Enquanto a pilha tiver algum tour
 	while (!pilha_vazia(&pilha)) {
 		t = pilha_pop(&pilha);
 
+		//Se o tour já tiver passado por todas as cidades, vamos adicionar a cidade inicial e verificar se ele é o melhor tour
 		if (t.num_cidades == num_cidades) {
 			add_cidade(&t, cidade_inicial, num_cidades, rotas);
 			update_tour(&best_tour, &t);
 		} else {
+			//Se o tour não tiver passado, vamos criar uma rota para ele
 			for (i = num_cidades - 1; i >= 0; i--) {
+				//Verifica se o tour é válido com a adição da cidade i. Se sim, adiciona a cidade.
 				if (check_tour(&t, i, cidade_inicial, num_cidades)) {
 					add_cidade(&t, i, num_cidades, rotas);
 
+					//Verifica se o tour é o melhor tour
 					if (is_best_tour(&best_tour, &t)) {
 						tour_t k = copy_tour(&t, num_cidades);
 						pilha_push(&pilha, k);
@@ -92,6 +99,7 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
+		//Se o melhor tour já tiver passado por todas as cidades
 		if (best_tour.cidades != t.cidades) {
 			free(t.cidades);
 		}
@@ -107,7 +115,6 @@ int main(int argc, char *argv[]) {
 	// Liberar recursos
 	pilha_destroy(&pilha);
 	free(best_tour.cidades);
-	free(tours_iniciais);
 	free(rotas);
 
 	return 0;
@@ -200,6 +207,8 @@ void update_tour(tour_t *best_tour, tour_t *t) {
 	}
 }
 
+//Verifica se o tour ou é uma rota que passa por todas as cidades ou se não contém a cidade inicial em seu trajeto (adicionada só no fim)
+//Se um desses fatos ocorrer, o tur é considerado válido
 int check_tour(tour_t *t, int cidade, int cidade_inicial, int num_cidades) {
 	if (t->num_cidades == num_cidades && cidade == cidade_inicial) {
 		return 1;
