@@ -68,9 +68,10 @@ int main(int argc, char *argv[]){
 
 	GET_TIME(start);
 
-
+	//Divide as etapas desse for entre as threads
 #	pragma omp parallel for num_threads(thread_count)
-	for (i = 0; i < num_cidades; i++) {
+	for (i = 0; i < num_cidades; i++)
+		//Passa por todas as cidades. Se a cidade não for a cidade inicial, verifica se um tour com ela poderá ser o melhor tour
 		if (i != cidade_inicial) {
 			tour_t tour_inicial;
 			init_tour(&tour_inicial, cidade_inicial, num_cidades);
@@ -242,6 +243,8 @@ void calcular_custo_minimo(tour_t *tour_inicial, tour_t *best_tour, int num_cida
 	pilha_t pilha;
 	pilha_init(&pilha);
 
+	//Semelhante ao do programa sequencial. A diferença é que ao invés do tour de teste teremos o tour inicial calculado antes e 
+	//que precisamos criar uma eção crítica para controlar o acesso à bestTour, que será comparada por todas as threads
 	pilha_push(&pilha, *tour_inicial);
 	while (!pilha_vazia(&pilha)) {
 		t = pilha_pop(&pilha);
